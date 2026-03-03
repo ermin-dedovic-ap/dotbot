@@ -12,6 +12,7 @@ $script:Config = @{
     BotRoot = $null
     ControlDir = $null
 }
+$script:McpListCache = $null
 
 function Initialize-ProductAPI {
     param(
@@ -110,13 +111,120 @@ function Get-ProductDocument {
     }
 }
 
+function Get-PreflightResults {
+    $botRoot = $script:Config.BotRoot
+    $projectRoot = Split-Path -Parent $botRoot
+
+    $settingsFile = Join-Path $botRoot "defaults\settings.default.json"
+    if (-not (Test-Path $settingsFile)) {
+        return @{ success = $true; checks = @() }
+    }
+
+    try {
+        $settingsData = Get-Content $settingsFile -Raw | ConvertFrom-Json
+        $preflightChecks = @()
+        if ($settingsData.kickstart -and $settingsData.kickstart.preflight) {
+            $preflightChecks = @($settingsData.kickstart.preflight)
+        }
+    } catch {
+        Write-Verbose "Pre-flight settings parse error: $_"
+        return @{ success = $true; checks = @() }
+    }
+
+    if ($preflightChecks.Count -eq 0) {
+        return @{ success = $true; checks = @() }
+    }
+
+    $results = @()
+    $allPassed = $true
+
+    foreach ($check in $preflightChecks) {
+        if (-not $check -or -not $check.type) { continue }
+
+        $passed = $false
+        $hint = $check.hint
+
+        if ($check.type -eq 'env_var') {
+            $varName = if ($check.var) { $check.var } else { $check.name }
+            $envLocalPath = Join-Path $projectRoot ".env.local"
+            $envValue = $null
+            if (Test-Path $envLocalPath) {
+                $envLines = Get-Content $envLocalPath -ErrorAction SilentlyContinue
+                foreach ($line in $envLines) {
+                    if ($line -match "^\s*$([regex]::Escape($varName))\s*=\s*(.+)$") {
+                        $envValue = $matches[1].Trim()
+                    }
+                }
+            }
+            $passed = [bool]$envValue
+            if (-not $hint -and -not $passed) {
+                $hint = "Set $varName in .env.local"
+            }
+        }
+        elseif ($check.type -eq 'mcp_server') {
+            $mcpFound = $false
+
+            # 1) Check .mcp.json (fast path)
+            $mcpJsonPath = Join-Path $projectRoot ".mcp.json"
+            if (Test-Path $mcpJsonPath) {
+                try {
+                    $mcpData = Get-Content $mcpJsonPath -Raw | ConvertFrom-Json
+                    if ($mcpData.mcpServers -and $mcpData.mcpServers.PSObject.Properties.Name -contains $check.name) {
+                        $mcpFound = $true
+                    }
+                } catch {}
+            }
+
+            # 2) Fall back to CLI registry (claude mcp list) — cached at module scope
+            if (-not $mcpFound) {
+                if ($null -eq $script:McpListCache) {
+                    try { $script:McpListCache = & claude mcp list 2>&1 | Out-String }
+                    catch { $script:McpListCache = "" }
+                }
+                if ($script:McpListCache -match "(?m)^$([regex]::Escape($check.name)):") {
+                    $mcpFound = $true
+                }
+            }
+
+            $passed = $mcpFound
+            if (-not $hint -and -not $passed) {
+                $hint = "Register '$($check.name)' server in .mcp.json or via 'claude mcp add'"
+            }
+        }
+        elseif ($check.type -eq 'cli_tool') {
+            $passed = $null -ne (Get-Command $check.name -ErrorAction SilentlyContinue)
+            if (-not $hint -and -not $passed) {
+                $hint = "Install '$($check.name)' and ensure it is on PATH"
+            }
+        }
+
+        if (-not $passed) { $allPassed = $false }
+
+        $results += @{
+            type    = $check.type
+            name    = $check.name
+            passed  = $passed
+            message = $check.message
+            hint    = if (-not $passed -and $hint) { $hint } else { $null }
+        }
+    }
+
+    return @{ success = $allPassed; checks = $results }
+}
+
 function Start-ProductKickstart {
     param(
         [Parameter(Mandatory)] [string]$UserPrompt,
         [array]$Files = @(),
-        [bool]$NeedsInterview = $true
+        [bool]$NeedsInterview = $true,
+        [bool]$AutoWorkflow = $true
     )
     $botRoot = $script:Config.BotRoot
+    $projectRoot = Split-Path -Parent $botRoot
+
+    # Note: Preflight validation is handled by the GET /preflight endpoint.
+    # The frontend checks preflight before calling POST, so we skip it here
+    # to avoid blocking the HTTP thread with a duplicate `claude mcp list` call.
 
     # Create briefing directory
     $briefingDir = Join-Path $botRoot "workspace\product\briefing"
@@ -150,16 +258,22 @@ function Start-ProductKickstart {
     }
 
     # Launch kickstart as tracked process
-    # Write prompt to a file and use a wrapper script to avoid Start-Process quoting issues
+    # Write prompt and launcher to .control/launchers/ (gitignored) to avoid
+    # absolute paths in committed files triggering the privacy scan
     $launcherPath = Join-Path $botRoot "systems\runtime\launch-process.ps1"
-    $promptFile = Join-Path $briefingDir "kickstart-prompt.txt"
+    $launchersDir = Join-Path $script:Config.ControlDir "launchers"
+    if (-not (Test-Path $launchersDir)) {
+        New-Item -Path $launchersDir -ItemType Directory -Force | Out-Null
+    }
+    $promptFile = Join-Path $launchersDir "kickstart-prompt.txt"
     $UserPrompt | Set-Content -Path $promptFile -Encoding UTF8 -NoNewline
 
-    $wrapperPath = Join-Path $briefingDir "kickstart-launcher.ps1"
+    $wrapperPath = Join-Path $launchersDir "kickstart-launcher.ps1"
     $interviewLine = if ($NeedsInterview) { " -NeedsInterview" } else { "" }
+    $autoWorkflowLine = if ($AutoWorkflow) { " -AutoWorkflow" } else { "" }
     @"
 `$prompt = Get-Content -LiteralPath '$promptFile' -Raw
-& '$launcherPath' -Type kickstart -Prompt `$prompt -Description 'Kickstart: project setup'$interviewLine
+& '$launcherPath' -Type kickstart -Prompt `$prompt -Description 'Kickstart: project setup'$interviewLine$autoWorkflowLine
 "@ | Set-Content -Path $wrapperPath -Encoding UTF8
 
     $proc = Start-Process pwsh -ArgumentList "-NoProfile", "-File", $wrapperPath -WindowStyle Normal -PassThru
@@ -256,6 +370,7 @@ Export-ModuleMember -Function @(
     'Initialize-ProductAPI',
     'Get-ProductList',
     'Get-ProductDocument',
+    'Get-PreflightResults',
     'Start-ProductKickstart',
     'Start-ProductAnalyse',
     'Start-RoadmapPlanning'
