@@ -2452,14 +2452,14 @@ elseif ($Type -in @('planning', 'commit', 'task-creation')) {
     # Determine workflow template
     $workflowFile = switch ($Type) {
         'planning'      { Join-Path $botRoot "prompts\workflows\03-plan-roadmap.md" }
-        'commit'        { Join-Path $botRoot "prompts\workflows\02-commit-and-push.md" }
-        'task-creation' { Join-Path $botRoot "prompts\workflows\04-new-tasks.md" }
+        'commit'        { Join-Path $botRoot "prompts\workflows\90-commit-and-push.md" }
+        'task-creation' { Join-Path $botRoot "prompts\workflows\91-new-tasks.md" }
     }
 
     $processData.workflow = switch ($Type) {
         'planning'      { "03-plan-roadmap.md" }
-        'commit'        { "02-commit-and-push.md" }
-        'task-creation' { "04-new-tasks.md" }
+        'commit'        { "90-commit-and-push.md" }
+        'task-creation' { "91-new-tasks.md" }
     }
 
     # Build prompt

@@ -467,6 +467,28 @@ foreach ($profileName in $resolvedOrder) {
         Write-Host "    Copied: $relativePath" -ForegroundColor Gray
     }
 
+    # Clean stale default workflows when a workflow profile is installed
+    if ($meta.type -eq "workflow") {
+        $workflowDir = Join-Path $BotDir "prompts\workflows"
+        if (Test-Path $workflowDir) {
+            # Collect filenames the overlay just provided
+            $overlayWorkflowDir = Join-Path $profileDir "prompts\workflows"
+            $overlayFiles = @{}
+            if (Test-Path $overlayWorkflowDir) {
+                Get-ChildItem -Path $overlayWorkflowDir -File | ForEach-Object {
+                    $overlayFiles[$_.Name] = $true
+                }
+            }
+            # Remove 00-89 range .md files NOT provided by the overlay
+            Get-ChildItem -Path $workflowDir -File -Filter "*.md" | Where-Object {
+                $_.Name -match '^[0-8]\d' -and -not $overlayFiles.ContainsKey($_.Name)
+            } | ForEach-Object {
+                Remove-Item -Path $_.FullName -Force
+                Write-Host "    Removed stale default workflow: $($_.Name)" -ForegroundColor DarkYellow
+            }
+        }
+    }
+
     if ($meta.type -eq "stack") { $installedStacks += $profileName }
     Write-Success "Installed profile: $profileName ($($meta.type))"
 
