@@ -1,10 +1,10 @@
 class Dotbot < Formula
   desc "Structured AI-assisted development framework with two-phase execution"
   homepage "https://github.com/andresharpe/dotbot-v3"
-  url "https://github.com/andresharpe/dotbot-v3/releases/download/v0.1.0/dotbot-v3-0.1.0.tar.gz"
+  url "https://github.com/andresharpe/dotbot-v3/releases/download/v3.1.0/dotbot-v3-3.1.0.tar.gz"
   sha256 ""
   license "MIT"
-  version "0.1.0"
+  version "3.1.0"
 
   depends_on "powershell/tap/powershell" => :recommended
 
