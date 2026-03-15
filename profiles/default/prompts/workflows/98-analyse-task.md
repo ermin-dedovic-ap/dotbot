@@ -80,7 +80,7 @@ If `needs_interview` is `true`:
    - Provide 3-5 options where applicable (Option A = recommendation)
    - Wait for answer before asking next question
 
-3. **Capture decisions from answers:** After each answer, evaluate whether it constitutes a reusable architectural decision (real trade-off, rejected alternatives, cross-task impact). If so, record it:
+3. **Capture decisions from answers:** After each answer, evaluate whether it constitutes a reusable decision (real trade-off, rejected alternatives, cross-task impact). This includes architectural, business, technical, and process decisions. If so, record it:
    ```javascript
    mcp__dotbot__decision_create({
      title: "Short noun-phrase title of the decision",
@@ -91,13 +91,13 @@ If `needs_interview` is `true`:
        { option: "The rejected option", reason_rejected: "Why it was rejected" }
      ],
      status: "accepted",
-     type: "technical",
+     type: "architecture",  // one of: architecture, business, technical, process
      impact: "medium",
      tags: ["task-derived"],
      related_task_ids: ["{{TASK_ID}}"]
    })
    ```
-   Only create decisions for answers with genuine architectural weight — skip simple preferences or obvious defaults.
+   Only create decisions for answers with genuine cross-task weight — skip simple preferences or obvious defaults.
 
 4. **Proceed to Phase 2** only when requirements are sufficiently clear
 
@@ -408,7 +408,7 @@ mcp__dotbot__task_mark_needs_input({
 
 Then STOP and wait. Do not continue analysis until question is answered.
 
-**After each answer is received**, apply the same decision-capture check as Phase 1.5 step 3: if the answer reveals a choice with real trade-offs and cross-task implications, create a Decision record via `decision_create` with `related_task_ids: ["{{TASK_ID}}"]` and `tags: ["task-derived"]`.
+**After each answer is received**, apply the same decision-capture check as Phase 1.5 step 3: if the answer reveals a choice with real trade-offs and cross-task implications (architectural, business, technical, or process), create a Decision record via `decision_create` with the appropriate `type`, `related_task_ids: ["{{TASK_ID}}"]`, and `tags: ["task-derived"]`.
 
 ### Phase 9: Split Proposal (If Needed)
 

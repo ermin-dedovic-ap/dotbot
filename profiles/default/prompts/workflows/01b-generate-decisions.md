@@ -1,12 +1,12 @@
 ---
 name: Generate Decisions from Interview
-description: Phase 1b — extract architectural decisions from the interview and product documents into decisions
+description: Phase 1b — extract decisions from the interview and product documents into decision records
 version: 1.0
 ---
 
-# Generate Architectural Decisions
+# Generate Decisions
 
-You are a technical architect reviewing the outputs of the kickstart interview and product planning phase. Your job is to extract genuine architectural decisions and record them using the `decision_create` MCP tool.
+You are reviewing the outputs of the kickstart interview and product planning phase. Your job is to extract genuine decisions — architectural, business, technical, and process — and record them using the `decision_create` MCP tool.
 
 ## Session Context
 
@@ -35,6 +35,8 @@ Scan the source documents for decisions that meet ALL of these criteria:
 - Migration strategy decisions (e.g. like-for-like vs. rework)
 - Integration decisions (which systems are included/deferred)
 - Domain model choices that have architectural consequences
+- Business constraints or priorities (budget, timeline, target audience trade-offs)
+- Process choices (branching strategy, release cadence, review workflows)
 - Any decision where the interview reveals a rejected alternative
 
 **Exclude:**
@@ -56,7 +58,7 @@ For each identified decision, call `decision_create`. Set `status` to `accepted`
 - **decision**: The specific choice made. Be concrete.
 - **consequences**: Trade-offs, constraints this creates for future tasks, risks.
 - **alternatives_considered**: What was evaluated and rejected, with reasons. Use structured format with option and reason_rejected.
-- **type**: The category of decision (e.g. "architecture", "technology", "scope", "integration").
+- **type**: One of `architecture`, `business`, `technical`, or `process`.
 - **impact**: The impact level of this decision (e.g. "high", "medium", "low").
 - **tags**: Relevant tags for categorization and filtering.
 - **related_decision_ids**: Link decisions that are logically connected (fill in after creating all of them).
@@ -73,7 +75,7 @@ mcp__dotbot__decision_create({
     { option: "Both Titan and FinApps simultaneously", reason_rejected: "Increased complexity and risk of breaking FinApps billing during the migration" }
   ],
   status: "accepted",
-  type: "scope",
+  type: "architecture",
   impact: "high",
   tags: ["platform", "scope", "titan"]
 })
@@ -125,4 +127,4 @@ Output a summary:
 
 ### ❌ Over-generating
 **Don't:** Create 20+ decisions from a simple project
-**Do:** Be selective — only genuine architectural decisions with future impact
+**Do:** Be selective — only genuine decisions with real trade-offs and future impact
