@@ -1737,7 +1737,7 @@ elseif ($Type -eq 'workflow') {
                 $claimOk = $false
                 for ($claimAttempt = 0; $claimAttempt -lt 5; $claimAttempt++) {
                     try {
-                        $claimStatus = if ($task.skip_analysis -eq $true -or $task.status -eq 'analysed') { 'in-progress' } else { 'analysing' }
+                        $claimStatus = if ($task.status -eq 'analysed') { 'in-progress' } else { 'analysing' }
                         $claimResult = $null
                         if ($claimStatus -eq 'in-progress' -and $task.status -ne 'in-progress') {
                             $claimResult = Invoke-TaskMarkInProgress -Arguments @{ task_id = $task.id }
