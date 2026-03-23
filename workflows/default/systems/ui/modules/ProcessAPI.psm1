@@ -291,10 +291,13 @@ function Get-MaxConcurrent {
         if (Test-Path $sp) {
             try {
                 $s = Get-Content $sp -Raw | ConvertFrom-Json
-                if ($s.execution -and $s.execution.max_concurrent) {
-                    $maxConcurrent = [int]$s.execution.max_concurrent
-                    break
+                if ($s.scoring -and $s.scoring.max_concurrent_scores -and [int]$s.scoring.max_concurrent_scores -gt $maxConcurrent) {
+                    $maxConcurrent = [int]$s.scoring.max_concurrent_scores
                 }
+                if ($s.execution -and $s.execution.max_concurrent -and [int]$s.execution.max_concurrent -gt $maxConcurrent) {
+                    $maxConcurrent = [int]$s.execution.max_concurrent
+                }
+                if ($maxConcurrent -gt 1) { break }
             } catch { Write-Verbose "Failed to parse max_concurrent setting: $_" }
         }
     }
