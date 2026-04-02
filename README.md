@@ -46,6 +46,12 @@ dotbot wraps AI-assisted coding in a managed, transparent workflow where every s
 - **Git** - [Download](https://git-scm.com/downloads)
 - **AI CLI** (at least one) - [Claude CLI](https://docs.anthropic.com/en/docs/claude-cli), [Codex CLI](https://github.com/openai/codex), or [Gemini CLI](https://github.com/google-gemini/gemini-cli)
 
+**Required PowerShell modules:**
+> **powershell-yaml** - YAML parsing. Install via:
+> ``` powershell
+> Install-Module -Name powershell-yaml -Scope CurrentUser
+> ```
+
 **Recommended MCP servers:**
 - **[Playwright MCP](https://github.com/anthropics/anthropic-quickstarts/tree/main/mcp-playwright)** - Browser automation for UI testing and verification.
 - **[Context7 MCP](https://github.com/upstash/context7)** - Library documentation lookup to reduce hallucination.
